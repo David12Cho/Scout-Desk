@@ -2,7 +2,7 @@
 
 An NHL front-office scouting tool built as a progressive web app. ScoutDesk demonstrates a full internal-tool stack — real-time data from the NHL API, drag-and-drop draft boards, offline-first scouting reports, and a PWA service worker — all wired together with the technologies used in modern hockey operations software.
 
-**Live demo:** _coming soon_
+**Live demo:** https://scout-desk-fntx28rc3-david12cho-4130s-projects.vercel.app
 
 ---
 
