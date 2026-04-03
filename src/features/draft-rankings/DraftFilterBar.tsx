@@ -14,7 +14,7 @@ interface Props {
   onChange: (next: DraftFilters) => void
 }
 
-const DRAFT_YEARS = [2025, 2024, 2023, 2022, 2021]
+const DRAFT_YEARS = [2026, 2025, 2024, 2023, 2022, 2021]
 
 const CATEGORIES = [
   { value: 0, label: 'All' },

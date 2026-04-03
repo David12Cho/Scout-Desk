@@ -4,7 +4,7 @@ import DraftFilterBar, { type DraftFilters } from './DraftFilterBar'
 import DraftTable, { type DraftSortState } from './DraftTable'
 
 const DEFAULT_FILTERS: DraftFilters = {
-  season: 2025,
+  season: 2026,
   categoryId: 0,
   position: 'all',
   search: '',

@@ -1,4 +1,5 @@
 import { getDB } from './db'
+import { gql } from './hasura'
 import type { ScoutingReport } from '@/types'
 
 export const reportsStore = {
@@ -29,11 +30,45 @@ export const reportsStore = {
     const db = await getDB()
     const pending = await db.getAllFromIndex('scouting_reports', 'by_sync_status', 'pending')
     if (pending.length === 0) return
-    console.log(`[ScoutDesk] Syncing ${pending.length} pending report(s)…`, pending)
-    // TODO: replace with Hasura GraphQL mutation once wired
+
     for (const report of pending) {
-      await db.put('scouting_reports', { ...report, syncStatus: 'synced' })
+      try {
+        await gql(`
+          mutation UpsertReport(
+            $id: uuid!, $authorId: String!, $playerId: Int!,
+            $gameDate: date!, $opponent: String!, $venue: String!,
+            $grades: jsonb!, $projection: String!, $flags: _text!,
+            $summary: String!, $createdAt: timestamptz!, $updatedAt: timestamptz!
+          ) {
+            insert_scouting_reports_one(object: {
+              id: $id author_id: $authorId player_id: $playerId
+              game_date: $gameDate opponent: $opponent venue: $venue
+              grades: $grades projection: $projection flags: $flags
+              summary: $summary sync_status: "synced"
+              created_at: $createdAt updated_at: $updatedAt
+            } on_conflict: {
+              constraint: scouting_reports_pkey
+              update_columns: [player_id, game_date, opponent, venue, grades, projection, flags, summary, sync_status, updated_at]
+            }) { id }
+          }
+        `, {
+          id: report.id,
+          authorId: report.authorId,
+          playerId: report.playerId,
+          gameDate: report.gameDate,
+          opponent: report.opponent,
+          venue: report.venue,
+          grades: report.grades,
+          projection: report.projection,
+          flags: `{${report.flags.join(',')}}`,
+          summary: report.summary,
+          createdAt: report.createdAt,
+          updatedAt: report.updatedAt,
+        })
+        await db.put('scouting_reports', { ...report, syncStatus: 'synced' })
+      } catch {
+        await db.put('scouting_reports', { ...report, syncStatus: 'failed' })
+      }
     }
-    console.log('[ScoutDesk] Sync complete.')
   },
 }

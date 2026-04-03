@@ -19,7 +19,7 @@ import TierColumn from './TierColumn'
 import ProspectPool from './ProspectPool'
 import AddTierButton from './AddTierButton'
 
-const DRAFT_SEASONS = [2025, 2024, 2023]
+const DRAFT_SEASONS = [2026, 2025, 2024, 2023]
 
 // Minimal floating card shown in DragOverlay
 function OverlayCard({ prospect }: { prospect: DraftRankingProspect | undefined }) {
@@ -37,7 +37,7 @@ function OverlayCard({ prospect }: { prospect: DraftRankingProspect | undefined 
 }
 
 export default function TierBoard() {
-  const [season, setSeason] = useState(2025)
+  const [season, setSeason] = useState(2026)
   const [tiers, setTiers] = useState<Tier[]>([])
   const [entries, setEntries] = useState<TierEntry[]>([])
   const [search, setSearch] = useState('')
@@ -47,9 +47,16 @@ export default function TierBoard() {
 
   // Board init / season switch
   useEffect(() => {
-    const board = tierBoardStore.getOrCreateBoard('local', season)
-    setTiers(tierBoardStore.getTiers(board.id))
-    setEntries(tierBoardStore.getEntries(board.id))
+    async function load() {
+      const board = await tierBoardStore.getOrCreateBoard('local', season)
+      const [tiers, entries] = await Promise.all([
+        tierBoardStore.getTiers(board.id),
+        tierBoardStore.getEntries(board.id),
+      ])
+      setTiers(tiers)
+      setEntries(entries)
+    }
+    load()
   }, [season])
 
   // Map playerId → prospect for fast lookup
@@ -123,8 +130,8 @@ export default function TierBoard() {
         notes: '',
         updatedAt: new Date().toISOString(),
       }
-      tierBoardStore.upsertEntry(newEntry)
       setEntries((prev) => [...prev, newEntry])
+      tierBoardStore.upsertEntry(newEntry)
       return
     }
 
@@ -136,8 +143,8 @@ export default function TierBoard() {
 
       // Dropped back on pool — remove from board
       if (overStr === 'droppable-pool' || !toTierId) {
-        tierBoardStore.deleteEntry(entryId)
         setEntries((prev) => prev.filter((e) => e.id !== entryId))
+        tierBoardStore.deleteEntry(entryId)
         return
       }
 
@@ -161,23 +168,22 @@ export default function TierBoard() {
           if (pos >= 0) return { ...e, orderIndex: pos }
           return e
         })
-        // Persist
-        reordered.forEach((e, i) => tierBoardStore.moveEntry(e.id, toTierId!, i))
         setEntries(updated)
+        reordered.forEach((e, i) => tierBoardStore.moveEntry(e.id, toTierId!, i))
       } else {
         // Move to different tier
         const newIndex = tierEntries.length
-        tierBoardStore.moveEntry(entryId, toTierId, newIndex)
         setEntries((prev) =>
           prev.map((e) => (e.id === entryId ? { ...e, tierId: toTierId!, orderIndex: newIndex } : e)),
         )
+        tierBoardStore.moveEntry(entryId, toTierId, newIndex)
       }
     }
   }
 
   // ── Tier mutations ──
-  function handleAddTier() {
-    const board = tierBoardStore.getOrCreateBoard('local', season)
+  async function handleAddTier() {
+    const board = await tierBoardStore.getOrCreateBoard('local', season)
     const newTier: Tier = {
       id: crypto.randomUUID(),
       boardId: board.id,
@@ -185,30 +191,30 @@ export default function TierBoard() {
       color: '#6b7280',
       orderIndex: tiers.length,
     }
-    tierBoardStore.upsertTier(newTier)
     setTiers((prev) => [...prev, newTier])
+    tierBoardStore.upsertTier(newTier)
   }
 
   function handleRename(tierId: string, name: string) {
     const tier = tiers.find((t) => t.id === tierId)
     if (!tier) return
     const updated = { ...tier, name }
-    tierBoardStore.upsertTier(updated)
     setTiers((prev) => prev.map((t) => (t.id === tierId ? updated : t)))
+    tierBoardStore.upsertTier(updated)
   }
 
   function handleColorChange(tierId: string, color: string) {
     const tier = tiers.find((t) => t.id === tierId)
     if (!tier) return
     const updated = { ...tier, color }
-    tierBoardStore.upsertTier(updated)
     setTiers((prev) => prev.map((t) => (t.id === tierId ? updated : t)))
+    tierBoardStore.upsertTier(updated)
   }
 
   function handleDeleteTier(tierId: string) {
-    tierBoardStore.deleteTier(tierId)
     setTiers((prev) => prev.filter((t) => t.id !== tierId))
     setEntries((prev) => prev.filter((e) => e.tierId !== tierId))
+    tierBoardStore.deleteTier(tierId)
   }
 
   // ── Entry mutations ──
@@ -216,21 +222,21 @@ export default function TierBoard() {
     const entry = entries.find((e) => e.id === entryId)
     if (!entry) return
     const updated = { ...entry, notes, updatedAt: new Date().toISOString() }
-    tierBoardStore.upsertEntry(updated)
     setEntries((prev) => prev.map((e) => (e.id === entryId ? updated : e)))
+    tierBoardStore.upsertEntry(updated)
   }
 
   function handleFlagsChange(entryId: string, flags: ScoutFlag[]) {
     const entry = entries.find((e) => e.id === entryId)
     if (!entry) return
     const updated = { ...entry, flags, updatedAt: new Date().toISOString() }
-    tierBoardStore.upsertEntry(updated)
     setEntries((prev) => prev.map((e) => (e.id === entryId ? updated : e)))
+    tierBoardStore.upsertEntry(updated)
   }
 
   function handleRemoveEntry(entryId: string) {
-    tierBoardStore.deleteEntry(entryId)
     setEntries((prev) => prev.filter((e) => e.id !== entryId))
+    tierBoardStore.deleteEntry(entryId)
   }
 
   return (

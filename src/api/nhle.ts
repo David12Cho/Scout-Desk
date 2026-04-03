@@ -111,18 +111,28 @@ export async function fetchSkaterScoringRates(
   seasonId: number,
   gameTypeId: 2 | 3,
 ): Promise<SkaterScoringRate[]> {
-  const params = new URLSearchParams({
-    limit: '1000',
-    start: '0',
-    sort: 'points',
-    dir: 'DESC',
-    cayenneExp: `seasonId=${seasonId} and gameTypeId=${gameTypeId}`,
-  })
-  const data = await get<{ data: SkaterSummaryRaw[] }>(
-    `${STATS_BASE}/skater/summary?${params}`,
-  )
+  const PAGE = 100
+  const cayenneExp = `seasonId=${seasonId} and gameTypeId=${gameTypeId}`
+  const all: SkaterSummaryRaw[] = []
+  let start = 0
 
-  return data.data.map((s) => {
+  while (true) {
+    const params = new URLSearchParams({
+      limit: String(PAGE),
+      start: String(start),
+      sort: 'points',
+      dir: 'DESC',
+      cayenneExp,
+    })
+    const data = await get<{ data: SkaterSummaryRaw[]; total: number }>(
+      `${STATS_BASE}/skater/summary?${params}`,
+    )
+    all.push(...data.data)
+    if (all.length >= data.total || data.data.length < PAGE) break
+    start += PAGE
+  }
+
+  return all.map((s) => {
     const totalTOIMinutes = (s.timeOnIcePerGame * s.gamesPlayed) / 60
     const per60 = (stat: number) =>
       totalTOIMinutes > 0 ? (stat / totalTOIMinutes) * 60 : 0
@@ -153,19 +163,19 @@ export async function fetchSkaterEdgeDetail(
     const z = raw.zoneTimeDetails
     return {
       maxSkatingSpeed:       raw.skatingSpeed.speedMax.imperial,
-      speedPercentile:       raw.skatingSpeed.speedMax.percentile,
+      speedPercentile:       raw.skatingSpeed.speedMax.percentile * 100,
       burstsAbove20Mph:      raw.skatingSpeed.burstsOver20.value,
-      burstsPercentile:      raw.skatingSpeed.burstsOver20.percentile,
+      burstsPercentile:      raw.skatingSpeed.burstsOver20.percentile * 100,
       totalDistanceMiles:    raw.totalDistanceSkated.imperial / 5280,
-      distancePercentile:    raw.totalDistanceSkated.percentile,
+      distancePercentile:    raw.totalDistanceSkated.percentile * 100,
       maxShotSpeed:          raw.topShotSpeed.imperial,
-      shotSpeedPercentile:   raw.topShotSpeed.percentile,
+      shotSpeedPercentile:   raw.topShotSpeed.percentile * 100,
       offZoneTimePercent:    z.offensiveZonePctg * 100,
-      offZonePercentile:     z.offensiveZonePercentile,
+      offZonePercentile:     z.offensiveZonePercentile * 100,
       neutralZoneTimePercent: z.neutralZonePctg * 100,
-      neutralZonePercentile:  z.neutralZonePercentile,
+      neutralZonePercentile:  z.neutralZonePercentile * 100,
       defZoneTimePercent:    z.defensiveZonePctg * 100,
-      defZonePercentile:     z.defensiveZonePercentile,
+      defZonePercentile:     z.defensiveZonePercentile * 100,
     }
   } catch {
     return null
@@ -254,6 +264,7 @@ export const NHL_TEAMS = [
 export type TeamAbbrev = (typeof NHL_TEAMS)[number]['abbrev']
 
 export const SEASONS = [
+  { id: 20252026, label: '2025–26' },
   { id: 20242025, label: '2024–25' },
   { id: 20232024, label: '2023–24' },
   { id: 20222023, label: '2022–23' },

@@ -115,7 +115,7 @@ export default function DraftTable({ data, sort, onSortChange }: Props) {
               {/* Rank */}
               <div className="w-14 shrink-0 text-right">
                 <span className="text-sm font-medium text-slate-200">
-                  {prospect.midtermRank}
+                  {index + 1}
                 </span>
                 {prospect.finalRank && prospect.finalRank !== prospect.midtermRank && (
                   <span className={[

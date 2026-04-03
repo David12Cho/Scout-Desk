@@ -4,7 +4,7 @@ import FilterBar, { type SkaterFilters } from './FilterBar'
 import SkaterTable, { type SortState } from './SkaterTable'
 
 const DEFAULT_FILTERS: SkaterFilters = {
-  seasonId: 20242025,
+  seasonId: 20252026,
   gameTypeId: 2,
   position: 'all',
   team: 'all',
